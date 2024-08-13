@@ -6,57 +6,62 @@ import currency from '../../assets/img/currency.png'
 import './styles.css'
 
 const PaymentPage = () => {
-    const navigate = useNavigate();
-    const location = useLocation();
-    const coffee = location.state?.coffee;
+  const navigate = useNavigate();
+  const location = useLocation();
+  const coffee = location.state?.coffee;
 
-    const [paymentMethod, setPaymentMethod] = useState(null);
-    const [message, setMessage] = useState('');
-    const [status, setStatus] = useState('waiting');
+  const [paymentMethod, setPaymentMethod] = useState(null);
+  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState('waiting');
 
-    useEffect(() => {
-        if (paymentMethod === 'cash') {
-          setStatus('processing');
-          emulator.StartCashin((amount) => {
-            setMessage(`Принято ${amount} рублей`);
-          });
-        } else if (paymentMethod === 'card') {
-          setStatus('processing');
-          emulator.BankCardPurchase(coffee.price, (result) => {
-            if (result) {
-              setStatus('success');
-              setMessage('Оплата прошла успешно. Выдача кофе...');
-              emulator.Vend(coffee.id, (vendResult) => {
-                if (vendResult) {
-                  setMessage('Кофе выдано. Спасибо!');
-                  setTimeout(() => navigate('/'), 3000);
-                } else {
-                  setMessage('Ошибка выдачи кофе. Попробуйте снова.');
-                }
-              });
-            } else {
-              setMessage('Оплата не прошла. Попробуйте снова.');
-            }
-          }, setMessage);
+  const handleCompletePayment = () => {
+    emulator.Vend(coffee.id, (vendResult) => {
+      if (vendResult) {
+        setMessage('Кофе выдано. Спасибо!');
+        setTimeout(() => navigate('/'), 3000);
+      } else {
+        setMessage('Ошибка выдачи кофе. Попробуйте снова.');
+      }
+    });
+  }
+
+  useEffect(() => {
+    if (paymentMethod === 'cash') {
+      setStatus('processing');
+      emulator.StartCashin((amount) => {
+        setMessage(`Принято ${amount} рублей`);
+      });
+      handleCompletePayment()
+    } else if (paymentMethod === 'card') {
+      setStatus('processing');
+      emulator.BankCardPurchase(coffee.price, (result) => {
+        if (result) {
+          setStatus('success');
+          setMessage('Оплата прошла успешно. Выдача кофе...');
+          handleCompletePayment()
+        } else {
+          setMessage('Оплата не прошла. Попробуйте снова.');
         }
-
-        return () => {
-            if (paymentMethod === 'cash') {
-                emulator.StopCashin();
-            } else if (paymentMethod === 'card') {
-                emulator.BankCardCancel();
-            }
-        };
-    }, [paymentMethod, coffee, navigate]);
-
-    const handlePaymentMethod = (method) => {
-        setPaymentMethod(method);
-    };
-
-    if (!coffee) {
-        navigate('/');
-        return null;
+      }, setMessage);
     }
+
+    return () => {
+      if (paymentMethod === 'cash') {
+        emulator.StopCashin();
+      } else if (paymentMethod === 'card') {
+        emulator.BankCardCancel();
+      }
+    };
+  }, [paymentMethod, coffee, navigate]);
+
+  const handlePaymentMethod = (method) => {
+    setPaymentMethod(method);
+  };
+
+  if (!coffee) {
+    navigate('/');
+    return null;
+  }
 
   return (
     <div
